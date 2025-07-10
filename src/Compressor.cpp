@@ -21,6 +21,7 @@ std::vector<char> Comp(std::span<const char> input) {
     size_t compressed_size = ZSTD_compress(
         output.data(), output.size(),
         input.data(), input.size(),
+        3
     );
 
     if (ZSTD_isError(compressed_size)) {
