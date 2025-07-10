@@ -6,7 +6,7 @@
 
 
 #include "Logger.h"
-#include <Zlib/Compressor.h>
+#include <Zstd/Compressor.h>
 #include <chrono>
 #include <iostream>
 #include <vector>

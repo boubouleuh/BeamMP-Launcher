@@ -5,9 +5,9 @@
 */
 
 #include "Network/network.hpp"
-#include "Zlib/Compressor.h"
+#include <zstd/Compressor.h>
 #include <stdexcept>
-
+#include <span>
 #if defined(_WIN32)
 #include <ws2tcpip.h>
 #elif defined(__linux__)

@@ -9,53 +9,53 @@
 #include <span>
 #include <vector>
 #include <zconf.h>
-#include <zlib.h>
+#include <zstd.h>
 #ifdef __linux__
 #include <cstring>
 #endif
 
 std::vector<char> Comp(std::span<const char> input) {
-    auto max_size = compressBound(input.size());
+    size_t max_size = ZSTD_compressBound(input.size());
     std::vector<char> output(max_size);
-    uLongf output_size = output.size();
-    int res = compress(
-        reinterpret_cast<Bytef*>(output.data()),
-        &output_size,
-        reinterpret_cast<const Bytef*>(input.data()),
-        static_cast<uLongf>(input.size()));
-    if (res != Z_OK) {
-        error("zlib compress() failed (code: " + std::to_string(res) + ", message: " + zError(res) + ")");
-        throw std::runtime_error("zlib compress() failed");
+
+    size_t compressed_size = ZSTD_compress(
+        output.data(), output.size(),
+        input.data(), input.size(),
+    );
+
+    if (ZSTD_isError(compressed_size)) {
+        error("zstd compress() failed: " + std::string(ZSTD_getErrorName(compressed_size)));
+        throw std::runtime_error("zstd compress() failed");
     }
-    debug("zlib compressed " + std::to_string(input.size()) + " B to " + std::to_string(output_size) + " B");
-    output.resize(output_size);
+
+    debug("zstd compressed " + std::to_string(input.size()) + " B to " + std::to_string(compressed_size) + " B");
+    output.resize(compressed_size);
     return output;
 }
 
 std::vector<char> DeComp(std::span<const char> input) {
-    std::vector<char> output_buffer(std::min<size_t>(input.size() * 5, 15 * 1024 * 1024));
+    unsigned long long decompressed_size = ZSTD_getFrameContentSize(input.data(), input.size());
 
-    uLongf output_size = output_buffer.size();
+    if (decompressed_size == ZSTD_CONTENTSIZE_ERROR) {
+        throw std::runtime_error("zstd decompression failed: not a valid zstd frame");
+    }
+    if (decompressed_size == ZSTD_CONTENTSIZE_UNKNOWN) {
+        throw std::runtime_error("zstd decompression failed: original size unknown");
+    }
+    if (decompressed_size > 30 * 1024 * 1024) {
+        throw std::runtime_error("decompressed packet size of 30 MB exceeded");
+    }
 
-    while (true) {
-        int res = uncompress(
-            reinterpret_cast<Bytef*>(output_buffer.data()),
-            &output_size,
-            reinterpret_cast<const Bytef*>(input.data()),
-            static_cast<uLongf>(input.size()));
-        if (res == Z_BUF_ERROR) {
-            if (output_buffer.size() > 30 * 1024 * 1024) {
-                throw std::runtime_error("decompressed packet size of 30 MB exceeded");
-            }
-            debug("zlib uncompress() failed, trying with 2x buffer size of " + std::to_string(output_buffer.size() * 2));
-            output_buffer.resize(output_buffer.size() * 2);
-            output_size = output_buffer.size();
-        } else if (res != Z_OK) {
-            error("zlib uncompress() failed (code: " + std::to_string(res) + ", message: " + zError(res) + ")");
-            throw std::runtime_error("zlib uncompress() failed");
-        } else if (res == Z_OK) {
-            break;
-        }
-    }    output_buffer.resize(output_size);
-    return output_buffer;
+    std::vector<char> output(decompressed_size);
+
+    size_t result = ZSTD_decompress(
+        output.data(), output.size(),
+        input.data(), input.size());
+
+    if (ZSTD_isError(result)) {
+        error("zstd decompress() failed: " + std::string(ZSTD_getErrorName(result)));
+        throw std::runtime_error("zstd decompress() failed");
+    }
+
+    return output;
 }
