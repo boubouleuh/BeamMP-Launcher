@@ -10,7 +10,6 @@
 #include <chrono>
 #include <iostream>
 #include <vector>
-
 #if defined(_WIN32)
 #include <ws2tcpip.h>
 #elif defined(__linux__)
