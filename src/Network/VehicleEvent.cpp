@@ -1,4 +1,4 @@
-/*
+﻿/*
  Copyright (C) 2024 BeamMP Ltd., BeamMP team and contributors.
  Licensed under AGPL-3.0 (or later), see <https://www.gnu.org/licenses/>.
  SPDX-License-Identifier: AGPL-3.0-or-later
@@ -6,7 +6,7 @@
 
 
 #include "Logger.h"
-#include <Zlib/Compressor.h>
+#include <Lz4/Compressor.h>
 #include <chrono>
 #include <iostream>
 #include <vector>
@@ -106,20 +106,17 @@ std::string TCPRcv(SOCKET Sock) {
     std::string Ret(Data.data(), Header);
 
     if (Ret.substr(0, 4) == "ABG:") {
-        auto substr = Ret.substr(4);
-        try {
-            auto res = DeComp(std::span<char>(substr.data(), substr.size()));
-            Ret = std::string(res.data(), res.size());
-        } catch (const std::runtime_error& err) {
-            // this happens e.g. when we're out of memory, or when we get incomplete data
-            error("Decompression failed");
-            return "";
+            auto substr = Ret.substr(4);
+            try {
+                auto res = DeComp(std::span<char>(substr.data(), substr.size()));
+                Ret = std::string(res.data(), res.size());
+            } catch (const std::runtime_error& err) {
+                // this happens e.g. when we're out of memory, or when we get incomplete data
+                error(std::string("Decompression failed: ") + err.what());
+                return "";
+            }
         }
-    }
 
-#ifdef DEBUG
-    // debug("Parsing from server -> " + std::to_string(Ret.size()));
-#endif
     if (Ret[0] == 'E' || Ret[0] == 'K')
         UUl(Ret.substr(1));
     return Ret;

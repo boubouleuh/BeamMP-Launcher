@@ -23,15 +23,15 @@ add_executable(${PROJECT_NAME} ${source_files})
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "BeamMP-Launcher")
 
 if (WIN32)
-    find_package(ZLIB REQUIRED)
+    find_package(lz4 REQUIRED)
     find_package(OpenSSL REQUIRED)
     target_link_libraries(${PROJECT_NAME} PRIVATE
-            ZLIB::ZLIB OpenSSL::SSL OpenSSL::Crypto ws2_32 httplib::httplib nlohmann_json::nlohmann_json CURL::libcurl)
+            lz4::lz4 OpenSSL::SSL OpenSSL::Crypto ws2_32 httplib::httplib nlohmann_json::nlohmann_json CURL::libcurl)
 elseif (UNIX)
-    find_package(ZLIB REQUIRED)
+    find_package(lz4 REQUIRED)
     find_package(OpenSSL REQUIRED)
     target_link_libraries(${PROJECT_NAME} PRIVATE
-            ZLIB::ZLIB OpenSSL::SSL OpenSSL::Crypto CURL::libcurl)
+            lz4::lz4 OpenSSL::SSL OpenSSL::Crypto CURL::libcurl)
 else(WIN32) #MINGW
     add_definitions("-D_WIN32_WINNT=0x0600")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Os -s --static")

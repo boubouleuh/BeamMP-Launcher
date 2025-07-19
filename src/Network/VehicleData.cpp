@@ -5,7 +5,7 @@
 */
 
 #include "Network/network.hpp"
-#include "Zlib/Compressor.h"
+#include "Lz4/Compressor.h"
 #include <stdexcept>
 
 #if defined(_WIN32)

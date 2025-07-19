@@ -2,7 +2,7 @@
   "dependencies": [
     "cpp-httplib",
     "nlohmann-json",
-    "zlib",
+    "lz4",
     "openssl",
     "curl"
   ]

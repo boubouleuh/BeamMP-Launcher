@@ -9,53 +9,51 @@
 #include <span>
 #include <vector>
 #include <zconf.h>
-#include <zlib.h>
+#include <lz4.h>
 #ifdef __linux__
 #include <cstring>
 #endif
 
 std::vector<char> Comp(std::span<const char> input) {
-    auto max_size = compressBound(input.size());
+    auto max_size = LZ4_compressBound(input.size());
     std::vector<char> output(max_size);
-    uLongf output_size = output.size();
-    int res = compress(
-        reinterpret_cast<Bytef*>(output.data()),
-        &output_size,
-        reinterpret_cast<const Bytef*>(input.data()),
-        static_cast<uLongf>(input.size()));
-    if (res != Z_OK) {
-        error("zlib compress() failed (code: " + std::to_string(res) + ", message: " + zError(res) + ")");
-        throw std::runtime_error("zlib compress() failed");
+
+    int res = LZ4_compress_default(
+        input.data(),
+        output.data(),
+        static_cast<int>(input.size()),
+        static_cast<int>(max_size));
+
+    if (res <= 0) {
+        throw std::runtime_error("lz4 compress() failed");
     }
-    debug("zlib compressed " + std::to_string(input.size()) + " B to " + std::to_string(output_size) + " B");
-    output.resize(output_size);
+
+    debug("lz4 compressed " + std::to_string(input.size()) + " B to " + std::to_string(res) + " B");
+
+    output.resize(res);
     return output;
 }
+
 
 std::vector<char> DeComp(std::span<const char> input) {
     std::vector<char> output_buffer(std::min<size_t>(input.size() * 5, 15 * 1024 * 1024));
 
-    uLongf output_size = output_buffer.size();
-
     while (true) {
-        int res = uncompress(
-            reinterpret_cast<Bytef*>(output_buffer.data()),
-            &output_size,
-            reinterpret_cast<const Bytef*>(input.data()),
-            static_cast<uLongf>(input.size()));
-        if (res == Z_BUF_ERROR) {
+        int decompressed_size_ret = LZ4_decompress_safe(
+            input.data(),
+            output_buffer.data(),
+            static_cast<int>(input.size()),
+            static_cast<int>(output_buffer.size()));
+
+        if (decompressed_size_ret < 0) {
             if (output_buffer.size() > 30 * 1024 * 1024) {
-                throw std::runtime_error("decompressed packet size of 30 MB exceeded");
+                throw std::runtime_error("LZ4 decompression exceeded 30 MB limit");
             }
-            debug("zlib uncompress() failed, trying with 2x buffer size of " + std::to_string(output_buffer.size() * 2));
             output_buffer.resize(output_buffer.size() * 2);
-            output_size = output_buffer.size();
-        } else if (res != Z_OK) {
-            error("zlib uncompress() failed (code: " + std::to_string(res) + ", message: " + zError(res) + ")");
-            throw std::runtime_error("zlib uncompress() failed");
-        } else if (res == Z_OK) {
-            break;
+            continue;
         }
-    }    output_buffer.resize(output_size);
-    return output_buffer;
+
+        output_buffer.resize(decompressed_size_ret);
+        return output_buffer;
+    }
 }

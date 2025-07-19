@@ -6,7 +6,7 @@
 
 #include "Network/network.hpp"
 #include <memory>
-#include <zlib.h>
+#include <lz4.h>
 #if defined(_WIN32)
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -100,7 +100,7 @@ void ServerSend(std::string Data, bool Rel) {
         Ack = true;
     if (C == 'N' || C == 'W' || C == 'Y' || C == 'V' || C == 'E' || C == 'C')
         Rel = true;
-    if (compressBound(Data.size()) > 1024)
+    if (LZ4_compressBound(Data.size()) > 1024)
         Rel = true;
     if (Ack || Rel) {
         if (Ack || DLen > 1000)
